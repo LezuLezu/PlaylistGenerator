@@ -3,6 +3,7 @@ import random
 import socket
 from dotenv import load_dotenv
 import spotipy
+from spotipy.cache_handler import MemoryCacheHandler
 from spotipy.oauth2 import SpotifyOAuth
 
 # =============================
@@ -10,7 +11,9 @@ from spotipy.oauth2 import SpotifyOAuth
 # =============================
 load_dotenv()
 
-# If default OAuth port (8888) is in use, try next ports so callback server can start
+scope = "playlist-modify-public playlist-modify-private playlist-read-private user-read-private"
+
+
 def _pick_redirect_port():
     base = "http://127.0.0.1"
     for port in range(8888, 8893):
@@ -22,11 +25,33 @@ def _pick_redirect_port():
             continue
     return os.getenv("SPOTIPY_REDIRECT_URI", f"{base}:8888/callback")
 
-_redirect_uri = _pick_redirect_port()
-if _redirect_uri != os.getenv("SPOTIPY_REDIRECT_URI", "").strip():
-    os.environ["SPOTIPY_REDIRECT_URI"] = _redirect_uri
 
-scope = "playlist-modify-public playlist-modify-private playlist-read-private user-read-private"
+def _spotify_from_refresh_token():
+    refresh = os.getenv("SPOTIFY_REFRESH_TOKEN", "").strip()
+    if not refresh:
+        return None
+    client_id = (os.getenv("SPOTIPY_CLIENT_ID") or "").strip()
+    client_secret = (os.getenv("SPOTIPY_CLIENT_SECRET") or "").strip()
+    redirect_uri = (os.getenv("SPOTIPY_REDIRECT_URI") or "http://127.0.0.1:8888/callback").strip()
+    if not client_id or not client_secret:
+        raise RuntimeError(
+            "SPOTIFY_REFRESH_TOKEN is set but SPOTIPY_CLIENT_ID / SPOTIPY_CLIENT_SECRET are missing."
+        )
+    auth_manager = SpotifyOAuth(
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=redirect_uri,
+        scope=scope,
+        open_browser=False,
+        cache_handler=MemoryCacheHandler({"refresh_token": refresh}),
+    )
+    return spotipy.Spotify(auth_manager=auth_manager)
+
+
+if not os.getenv("SPOTIFY_REFRESH_TOKEN", "").strip():
+    _redirect_uri = _pick_redirect_port()
+    if _redirect_uri != os.getenv("SPOTIPY_REDIRECT_URI", "").strip():
+        os.environ["SPOTIPY_REDIRECT_URI"] = _redirect_uri
 
 
 class _SpotifyOAuthWithPrompt(SpotifyOAuth):
@@ -73,10 +98,13 @@ class _SpotifyOAuthWithPrompt(SpotifyOAuth):
         return code
 
 
-# open_browser=False: print auth URL instead of opening it (works in WSL/headless when gio fails)
-sp = spotipy.Spotify(
-    auth_manager=_SpotifyOAuthWithPrompt(scope=scope, open_browser=False)
-)
+# CI / automation: SPOTIFY_REFRESH_TOKEN + app credentials (no browser).
+# Local: interactive OAuth (open_browser=False for WSL/headless).
+sp = _spotify_from_refresh_token()
+if sp is None:
+    sp = spotipy.Spotify(
+        auth_manager=_SpotifyOAuthWithPrompt(scope=scope, open_browser=False)
+    )
 
 _current_user = sp.current_user()
 user_id = _current_user["id"]
@@ -97,7 +125,8 @@ for key in sorted(os.environ):
 AANTAL_PLAYLISTS = 5
 DUUR_PER_PLAYLIST_MIN = (60 * 10)
 PLAYLIST_NAMEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag"]
-PLAYLIST_PREFIX = "VasioVibes"  # e.g. VasioVibes_maandag, VasioVibes_dinsdag, ...
+# Override with PLAYLIST_PREFIX (e.g. VasioVibesAuto for CI so production lists stay untouched).
+PLAYLIST_PREFIX = (os.getenv("PLAYLIST_PREFIX") or "VasioVibes").strip() or "VasioVibes"
 
 # =============================
 # HELPERS
