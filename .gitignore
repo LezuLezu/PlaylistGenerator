@@ -3,3 +3,5 @@
 spotify_auth_url.txt
 .cache
 .cache-*
+__pycache__/
+*.pyc
