@@ -102,6 +102,27 @@ class _SpotifyOAuthWithPrompt(SpotifyOAuth):
 # Local: interactive OAuth (open_browser=False for WSL/headless).
 sp = _spotify_from_refresh_token()
 if sp is None:
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        missing = [
+            name
+            for name, val in (
+                ("SPOTIFY_REFRESH_TOKEN", os.getenv("SPOTIFY_REFRESH_TOKEN", "")),
+                ("SPOTIPY_CLIENT_ID", os.getenv("SPOTIPY_CLIENT_ID", "")),
+                ("SPOTIPY_CLIENT_SECRET", os.getenv("SPOTIPY_CLIENT_SECRET", "")),
+                ("SPOTIPY_REDIRECT_URI", os.getenv("SPOTIPY_REDIRECT_URI", "")),
+            )
+            if not _clean_env_credential(val)
+        ]
+        raise RuntimeError(
+            "GitHub Actions cannot use interactive Spotify login (no stdin, no browser). "
+            "Use refresh-token auth: set repository secrets and pass them in the workflow job env. "
+            + (
+                f"Missing or empty in this run: {', '.join(missing)}. "
+                if missing
+                else "Secrets may be unset or not exposed to this workflow (e.g. wrong environment, or fork PR). "
+            )
+            + "If the authorize URL shows client_id=, SPOTIPY_CLIENT_ID never reached the runner."
+        )
     sp = spotipy.Spotify(
         auth_manager=_SpotifyOAuthWithPrompt(scope=scope, open_browser=False)
     )
