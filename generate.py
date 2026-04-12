@@ -111,7 +111,7 @@ if sp is None:
                 ("SPOTIPY_CLIENT_SECRET", os.getenv("SPOTIPY_CLIENT_SECRET", "")),
                 ("SPOTIPY_REDIRECT_URI", os.getenv("SPOTIPY_REDIRECT_URI", "")),
             )
-            if not _clean_env_credential(val)
+            if not (val or "").strip()
         ]
         raise RuntimeError(
             "GitHub Actions cannot use interactive Spotify login (no stdin, no browser). "
