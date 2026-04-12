@@ -143,26 +143,45 @@ user_country = _current_user.get("country") or "US"
 # =============================
 # CONFIG
 # =============================
-# Dynamisch alle SOURCE_PLAYLIST_* variabelen ophalen uit .env
-playlist_urls = []
+AANTAL_PLAYLISTS = 5
+DUUR_PER_PLAYLIST_MIN = (60 * 10)
+PLAYLIST_NAMEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag"]
+
+
+def normalize_playlist_id(value):
+    """Accept bare Spotify playlist id, open.spotify.com URL, or spotify:playlist: URI."""
+    s = str(value).strip().strip('"').strip("'")
+    if not s:
+        return ""
+    low = s.lower()
+    idx = low.find("playlist/")
+    if idx != -1:
+        part = s[idx + len("playlist/") :]
+        return part.split("?", 1)[0].split("#", 1)[0].strip()
+    if low.startswith("spotify:playlist:"):
+        return s.split(":", 2)[2].split("?", 1)[0].strip()
+    return s
+
+
+source_playlist_ids = []
 for key in sorted(os.environ):
     k = key.strip()
     if k.startswith("SOURCE_PLAYLIST_"):
         val = os.getenv(key) or os.getenv(k)
         if val:
-            playlist_urls.append(str(val).strip().strip('"').strip("'"))
+            pid = normalize_playlist_id(val)
+            if pid:
+                source_playlist_ids.append(pid)
 
-AANTAL_PLAYLISTS = 5
-DUUR_PER_PLAYLIST_MIN = (60 * 10)
-PLAYLIST_NAMEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag"]
-# Override with PLAYLIST_PREFIX (e.g. VasioVibesAuto for CI so production lists stay untouched).
-PLAYLIST_PREFIX = (os.getenv("PLAYLIST_PREFIX") or "VasioVibes").strip() or "VasioVibes"
+target_playlist_ids = []
+for i in range(1, AANTAL_PLAYLISTS + 1):
+    val = os.getenv(f"TARGET_PLAYLIST_ID_{i}", "")
+    pid = normalize_playlist_id(val) if val else ""
+    target_playlist_ids.append(pid)
 
 # =============================
 # HELPERS
 # =============================
-def extract_playlist_id(url):
-    return url.split("playlist/")[1].split("?")[0]
 
 def get_all_tracks(playlist_id):
     tracks = []
@@ -232,59 +251,40 @@ def generate_playlists(tracks, aantal, duur_minuten):
         playlists.append(playlist_tracks)
     return playlists
 
-def find_playlist_id_by_name(name):
-    """Return playlist id if user has a playlist with this exact name, else None."""
-    offset = 0
-    limit = 50
-    while True:
-        result = sp.current_user_playlists(limit=limit, offset=offset)
-        for pl in result.get("items") or []:
-            if pl.get("name") == name:
-                return pl["id"]
-        if not result.get("next"):
-            return None
-        offset += limit
+
+def _playlist_web_url(playlist_id):
+    return f"https://open.spotify.com/playlist/{playlist_id}"
 
 
-def create_or_update_playlist(name, track_ids):
-    """Create a new playlist or replace tracks in an existing one with the same name."""
-    existing_id = find_playlist_id_by_name(name)
-    if existing_id:
-        # Update existing playlist (API allows max 100 items per replace, then add rest)
-        sp.playlist_replace_items(existing_id, track_ids[:100])
-        for i in range(100, len(track_ids), 100):
-            sp.playlist_add_items(existing_id, track_ids[i : i + 100])
-        playlist = sp.playlist(existing_id)
-        return playlist["external_urls"]["spotify"], "bijgewerkt"
-    # Create new playlist
-    try:
-        playlist = sp.current_user_playlist_create(name=name, public=False)
-    except spotipy.exceptions.SpotifyException as e:
-        if e.http_status == 403:
-            raise RuntimeError(
-                "❌ 403 Forbidden bij aanmaken playlist.\n\n"
-                "Je Spotify-app staat waarschijnlijk in Development Mode. Voeg je account toe:\n"
-                "  1. Ga naar https://developer.spotify.com/dashboard\n"
-                "  2. Open je app → Users and Access (of Settings)\n"
-                "  3. Voeg het e-mailadres van je Spotify-account toe als user\n"
-                "  4. Run dit script opnieuw.\n\n"
-                "Zie: https://developer.spotify.com/documentation/web-api/concepts/authorization"
-            ) from e
-        raise
-    for i in range(0, len(track_ids), 100):
-        sp.playlist_add_items(
-            playlist_id=playlist["id"],
-            items=track_ids[i:i+100]
-        )
-    return playlist["external_urls"]["spotify"], "aangemaakt"
+def replace_playlist_tracks(playlist_id, track_ids):
+    """Replace contents of an existing playlist (max 100 per replace/add call)."""
+    sp.playlist_replace_items(playlist_id, track_ids[:100])
+    for i in range(100, len(track_ids), 100):
+        sp.playlist_add_items(playlist_id, track_ids[i : i + 100])
+    return _playlist_web_url(playlist_id), "bijgewerkt"
+
 
 # =============================
 # MAIN FLOW
 # =============================
 def main():
-    for url in playlist_urls:
-        print(f"\n🎵 Verwerken playlist: {url}")
-        playlist_id = extract_playlist_id(url)
+    missing_targets = [
+        f"TARGET_PLAYLIST_ID_{i + 1}"
+        for i, pid in enumerate(target_playlist_ids)
+        if not pid
+    ]
+    if missing_targets:
+        raise RuntimeError(
+            "Set all target playlist ids (empty env): " + ", ".join(missing_targets)
+        )
+    if not source_playlist_ids:
+        raise RuntimeError(
+            "No source playlists: set SOURCE_PLAYLIST_1, SOURCE_PLAYLIST_2, … "
+            "(Spotify playlist id or full playlist URL)."
+        )
+
+    for playlist_id in source_playlist_ids:
+        print(f"\n🎵 Verwerken bron-playlist: {playlist_id}")
 
         print("Tracks ophalen...")
         tracks = get_all_tracks(playlist_id)
@@ -302,12 +302,12 @@ def main():
         print("Playlists genereren...")
         generated = generate_playlists(tracks, AANTAL_PLAYLISTS, DUUR_PER_PLAYLIST_MIN)
 
-        print("Playlists aanmaken of bijwerken op Spotify...")
+        print("Playlists bijwerken op Spotify…")
         for i, track_ids in enumerate(generated):
-            day_lower = PLAYLIST_NAMEN[i].lower()
-            name = f"{PLAYLIST_PREFIX}_{day_lower}"
-            url, status = create_or_update_playlist(name, track_ids)
-            print(f"✅ {name} ({status}): {url}")
+            day = PLAYLIST_NAMEN[i]
+            tid = target_playlist_ids[i]
+            url, status = replace_playlist_tracks(tid, track_ids)
+            print(f"✅ {day} → {tid} ({status}): {url}")
 
 if __name__ == "__main__":
     main()

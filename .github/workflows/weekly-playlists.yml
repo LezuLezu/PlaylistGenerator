@@ -30,7 +30,10 @@ jobs:
           SPOTIPY_CLIENT_SECRET: ${{ secrets.SPOTIPY_CLIENT_SECRET }}
           SPOTIPY_REDIRECT_URI: ${{ secrets.SPOTIPY_REDIRECT_URI }}
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
-          # Test prefix so VasioVibes_* weekday lists are not touched.
-          PLAYLIST_PREFIX: VasioVibes
           SOURCE_PLAYLIST_1: ${{ vars.SOURCE_PLAYLIST_1 }}
+          TARGET_PLAYLIST_ID_1: ${{ vars.TARGET_PLAYLIST_ID_1 }}
+          TARGET_PLAYLIST_ID_2: ${{ vars.TARGET_PLAYLIST_ID_2 }}
+          TARGET_PLAYLIST_ID_3: ${{ vars.TARGET_PLAYLIST_ID_3 }}
+          TARGET_PLAYLIST_ID_4: ${{ vars.TARGET_PLAYLIST_ID_4 }}
+          TARGET_PLAYLIST_ID_5: ${{ vars.TARGET_PLAYLIST_ID_5 }}
         run: python generate.py
