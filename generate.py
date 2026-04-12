@@ -1,6 +1,7 @@
 import os
 import random
 import socket
+import time
 from dotenv import load_dotenv
 import spotipy
 from spotipy.cache_handler import MemoryCacheHandler
@@ -37,13 +38,21 @@ def _spotify_from_refresh_token():
         raise RuntimeError(
             "SPOTIFY_REFRESH_TOKEN is set but SPOTIPY_CLIENT_ID / SPOTIPY_CLIENT_SECRET are missing."
         )
+    # MemoryCacheHandler must include scope and expires_at or spotipy's
+    # validate_token() drops the entry and falls back to interactive OAuth.
     auth_manager = SpotifyOAuth(
         client_id=client_id,
         client_secret=client_secret,
         redirect_uri=redirect_uri,
         scope=scope,
         open_browser=False,
-        cache_handler=MemoryCacheHandler({"refresh_token": refresh}),
+        cache_handler=MemoryCacheHandler(
+            {
+                "refresh_token": refresh,
+                "scope": scope,
+                "expires_at": int(time.time()) - 3600,
+            }
+        ),
     )
     return spotipy.Spotify(auth_manager=auth_manager)
 
