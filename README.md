@@ -1,4 +1,5 @@
 Playlist generator for Spotify
+Configured for VasioVibes
 
 Splits one or more source playlists into several same-length playlists (e.g. weekday lists). Each generated playlist has **no duplicate tracks**.
 
