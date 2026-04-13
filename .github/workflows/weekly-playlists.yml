@@ -1,11 +1,14 @@
-# Runs on the default branch schedule only (merge this workflow to main for cron).
-# Manual runs: Actions → Weekly playlist generation → Run workflow (pick branch).
-# Schedule uses UTC cron only. Times below match Europe/Amsterdam during CEST (UTC+2, ~late Mar–late Oct).
-# In CET (winter, UTC+1) use 48 6 * * 1 (07:48)
+# Triggers: push to main, schedule (below), and workflow_dispatch (Actions → Weekly playlist generation → Run workflow).
+# Scheduled workflows are evaluated from the default branch; keep this file merged to main.
+# Weekly slot: UTC cron — Mon 05:48 UTC ≈ 07:48 Europe/Amsterdam in CEST (UTC+2). In CET use 48 6 * * 1 for the same local time.
+# Test slot: 14:00 Europe/Amsterdam daily (timezone in YAML) — remove when no longer needed.
 
 name: Weekly playlist generation
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     # Mon 07:48 Amsterdam (CEST) = 05:48 UTC — avoids minute 0 (GitHub high-load note on :00).
     - cron: "48 5 * * 1"
