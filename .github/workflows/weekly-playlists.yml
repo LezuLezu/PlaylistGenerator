@@ -9,6 +9,9 @@ on:
   schedule:
     # Mon 07:48 Amsterdam (CEST) = 05:48 UTC — avoids minute 0 (GitHub high-load note on :00).
     - cron: "48 5 * * 1"
+    # Test: 14:00 Europe/Amsterdam every day (includes “today”) — remove after confirming schedules.
+    - cron: "0 14 * * *"
+      timezone: "Europe/Amsterdam"
   workflow_dispatch:
 
 permissions:
