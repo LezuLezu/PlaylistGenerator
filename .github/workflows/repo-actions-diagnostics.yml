@@ -1,0 +1,30 @@
+# Run once manually: Actions → "Repo Actions diagnostics" → Run workflow.
+# Logs flags that affect whether GitHub will queue scheduled workflows at all.
+# Remove this file when you are done troubleshooting.
+
+name: Repo Actions diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository context
+        run: |
+          echo "repository=${{ github.repository }}"
+          echo "event_name=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+          echo "fork=${{ github.event.repository.fork }}"
+          echo "private=${{ github.event.repository.private }}"
+          echo "archived=${{ github.event.repository.archived }}"
+          echo "default_branch=${{ github.event.repository.default_branch }}"
+      - name: Hint
+        run: |
+          echo "If fork=true, scheduled workflows are off until enabled (forks of public repos; check fork settings)."
+          echo "Compare workflow state via API: GET /repos/OWNER/REPO/actions/workflows — state should be active, not disabled_manually or disabled_fork."
+          echo "Each workflow: Actions → workflow name → ensure Enable workflow if shown."
