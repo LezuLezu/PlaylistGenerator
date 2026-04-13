@@ -1,15 +1,21 @@
 # Runs on the default branch schedule only (merge this workflow to main for cron).
 # Manual runs: Actions → Weekly playlist generation → Run workflow (pick branch).
 # Schedule uses UTC cron only. Times below match Europe/Amsterdam during CEST (UTC+2, ~late Mar–late Oct).
-# In CET (winter, UTC+1) use 0 7 * * 1 (08:00) and 45 8 * * 1 (09:45) instead, or switch back to timezone-aware schedule.
+# In CET (winter, UTC+1) use 48 6 * * 1 (07:48) and 2 9 * * 1 (10:02) instead, or restore timezone-aware schedule on GitHub.
 
 name: Weekly playlist generation
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # Mon 08:00 Amsterdam (CEST) = 06:00 UTC
-    - cron: "45 7 * * 1" # Mon 09:45 Amsterdam (CEST) = 07:45 UTC — test slot; remove when schedule is verified
+    # Mon 07:48 Amsterdam (CEST) = 05:48 UTC — avoids minute 0 (GitHub high-load note on :00).
+    - cron: "48 5 * * 1"
+    # Mon 10:02 Amsterdam (CEST) = 08:02 UTC — test slot; remove when schedule is verified
+    - cron: "2 8 * * 1"
   workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write # setup-python pip cache
 
 jobs:
   generate:

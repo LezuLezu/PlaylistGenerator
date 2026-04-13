@@ -1,0 +1,21 @@
+# Minimal schedule-only workflow to verify GitHub actually queues cron for this repo.
+# If this runs on schedule but weekly-playlists.yml never shows "schedule" runs, the issue is workflow-specific (e.g. environment, parsing).
+# If this never runs either, the issue is repo/account-level (disabled workflow, registration, org policy).
+# Delete this file after you have an answer.
+
+name: Schedule canary
+
+on:
+  schedule:
+    # Every 6h at :23 UTC — avoids minute 0 (high load); see GitHub schedule docs.
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "canary schedule ok $(date -u +%Y-%m-%dT%H:%M:%SZ)"
