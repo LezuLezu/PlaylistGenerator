@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: "0 8 * * 1"
       timezone: "Europe/Amsterdam"
+    # Test slot: Mondays 09:15 Europe/Amsterdam (incl. today) — remove after confirming scheduled runs.
+    - cron: "15 9 * * 1"
+      timezone: "Europe/Amsterdam"
   workflow_dispatch:
 
 jobs:
