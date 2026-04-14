@@ -1,7 +1,5 @@
-# Triggers: push to main, schedule (below), and workflow_dispatch (Actions → Weekly playlist generation → Run workflow).
-# Scheduled workflows are evaluated from the default branch; keep this file merged to main.
-# Weekly slot: UTC cron — Mon 05:48 UTC ≈ 07:48 Europe/Amsterdam in CEST (UTC+2). In CET use 48 6 * * 1 for the same local time.
-# Test slot: 7:43 Europe/Amsterdam daily (timezone in YAML) — remove when no longer needed.
+# Triggers: schedule (below), and workflow_dispatch (Actions → Weekly playlist generation → Run workflow).
+# Weekly slot:  06:48 Europe/Amsterdam in CEST (UTC+2). 
 
 name: Weekly playlist generation
 
