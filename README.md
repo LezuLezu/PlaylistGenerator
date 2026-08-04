@@ -26,3 +26,6 @@ Splits one or more source playlists into several same-length playlists (e.g. wee
 ```
 
 The first run (without `SPOTIFY_REFRESH_TOKEN`) prints a long Spotify URL and saves it to `spotify_auth_url.txt`. If the link opens to a white screen, copy the URL and open it in **Chrome or Edge on Windows** (not the WSL browser). Log in, then you’ll be sent to a blank/white page—copy the **redirect** URL from the address bar (e.g. `http://127.0.0.1:8889/callback?code=...`) and paste it into the terminal. After that, use the refresh token in `.env` or GitHub Actions secrets; the script only **updates** the five target playlists by id.
+
+
+
